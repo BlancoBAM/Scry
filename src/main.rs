@@ -3,6 +3,7 @@ use gtk4::prelude::*;
 use libadwaita as adw;
 use libadwaita::prelude::*;
 use relm4::prelude::*;
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::process::Command;
 use std::thread;
@@ -27,6 +28,7 @@ struct AppModel {
     sessions: Vec<ZellijSessionEntry>,
     observer_tokens: HashMap<String, String>,
     observer_status_text: String,
+    sessions_dirty: Cell<bool>,
 }
 
 #[derive(Debug)]
@@ -270,7 +272,7 @@ impl SimpleComponent for AppModel {
 
                         // Section 4: Security (Offline)
                         adw::PreferencesGroup {
-                            set_title: "Security & Authentication",
+                            set_title: "Security and Authentication",
                             #[watch]
                             set_visible: !model.is_running && !model.is_creating,
 
@@ -468,6 +470,7 @@ impl SimpleComponent for AppModel {
             sessions,
             observer_tokens: HashMap::new(),
             observer_status_text: "Generate a read-only passcode to let someone watch your terminal".to_string(),
+            sessions_dirty: Cell::new(true),
         };
 
         let widgets = view_output!();
@@ -520,6 +523,11 @@ impl SimpleComponent for AppModel {
     }
 
     fn post_view() {
+        if !model.sessions_dirty.get() {
+            return;
+        }
+        model.sessions_dirty.set(false);
+
         // Rebuild sessions list box dynamically
         while let Some(child) = widgets.sessions_box.first_child() {
             widgets.sessions_box.remove(&child);
@@ -796,6 +804,7 @@ impl SimpleComponent for AppModel {
                 self.is_running = success;
                 self.status_log.push(msg);
                 self.sessions = ZellijManager::list_all_sessions();
+                self.sessions_dirty.set(true);
                 self.update_url();
             }
 
@@ -807,6 +816,7 @@ impl SimpleComponent for AppModel {
                 thread::sleep(Duration::from_millis(500));
                 self.is_running = SystemdManager::is_active();
                 self.sessions = ZellijManager::list_all_sessions();
+                self.sessions_dirty.set(true);
             }
 
             AppMsg::ToggleServeToWeb(serve_web) => {
@@ -881,6 +891,7 @@ impl SimpleComponent for AppModel {
                 self.is_running = SystemdManager::is_active();
                 self.tailscale_info = TailscaleManager::get_info();
                 self.sessions = ZellijManager::list_all_sessions();
+                self.sessions_dirty.set(true);
                 self.update_url();
             }
 
@@ -899,11 +910,13 @@ impl SimpleComponent for AppModel {
                 self.observer_tokens.clear();
                 self.observer_status_text = "Generate a read-only passcode to let someone watch your terminal".to_string();
                 self.sessions = ZellijManager::list_all_sessions();
+                self.sessions_dirty.set(true);
                 self.update_url();
             }
 
             AppMsg::SessionsLoaded(sessions) => {
                 self.sessions = sessions;
+                self.sessions_dirty.set(true);
             }
 
             AppMsg::GenerateObserverToken(session_name) => {
@@ -922,6 +935,7 @@ impl SimpleComponent for AppModel {
                     self.observer_status_text = format!("View-Only Code: {} (Read-Only)", token);
                 }
                 self.observer_tokens.insert(session_name, token);
+                self.sessions_dirty.set(true);
             }
 
             AppMsg::ShowObserverQr(session_name) => {
@@ -950,6 +964,9 @@ impl SimpleComponent for AppModel {
             }
 
             AppMsg::NewSessionNameChanged(name) => {
+                if self.new_session_name == name {
+                    return;
+                }
                 self.new_session_name = name;
             }
 
