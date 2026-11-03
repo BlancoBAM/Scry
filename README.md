@@ -200,3 +200,4 @@ Scry is developed as a native feature for **Lilith Linux**. Contributions, issue
 ## 📄 License
 
 Distributed under the MIT License. See `LICENSE` for more information.
+# Scry
