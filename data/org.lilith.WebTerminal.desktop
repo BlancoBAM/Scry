@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=Scry
+GenericName=Web Terminal Manager
+Comment=Persistent Web Terminal for LAN and Remote Access
+Exec=scry
+Icon=org.lilith.Scry
+Terminal=false
+Type=Application
+Categories=System;TerminalEmulator;Network;Utility;
+Keywords=terminal;remote;web;zellij;tailscale;serve;funnel;scry;lilith;
+StartupNotify=true
+StartupWMClass=scry
